@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Smart Manager V5.3</title>
+<style>
+  /* --- THEME & RESET --- */
+  :root { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #2979ff; --border: #333; --muted: #888; --danger: #ff5252; --success: #00e676; --badge-bg: #333; --badge-text: #ccc; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; margin: 0; padding-bottom: 100px; display: flex; flex-direction: column; align-items: center; }
+
+  /* --- COMPONENTS --- */
+  .container { width: 100%; max-width: 700px; }
+  .card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  
+  h1 { font-size: 16px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); text-align: center; margin: 0 0 20px 0; font-weight: 700; }
+  h2 { font-size: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* --- INPUTS --- */
+  input[type="text"], input[type="date"], input[type="search"], select { 
+    width: 100%; padding: 14px; background: #2c2c2c; border: 1px solid #444; border-radius: 8px; color: white; font-size: 16px; appearance: none; margin-bottom: 0; transition: border 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input:disabled { opacity: 0.5; }
+
+  label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 6px; margin-top: 15px; }
+  
+  /* --- BUTTONS --- */
+  button { 
+    background: var(--accent); color: white; border: none; padding: 16px; font-size: 15px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; text-transform: uppercase; margin-top: 15px; box-shadow: 0 4px 12px rgba(41, 121, 255, 0.2); transition: 0.2s; 
+  }
+  button:active { transform: scale(0.98); }
+  button:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; opacity: 0.5; }
+  
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); box-shadow: none; margin-top: 0; }
+  .btn-danger { background: var(--danger); box-shadow: none; }
+  .btn-small { padding: 8px 12px; font-size: 12px; width: auto; margin: 0; }
+  .btn-icon { width: 50px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .btn-active { background: var(--success); color: #000; border-color: var(--success); }
+
+  /* --- PAGINATION CONTROLS --- */
+  .pagination-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #333; }
+  .pagination-controls button { width: auto; padding: 8px 20px; font-size: 12px; margin: 0; }
+  .page-info { font-size: 12px; color: var(--muted); font-family: monospace; }
+
+  /* --- LAYOUT UTILS --- */
+  .row { display: flex; flex-wrap: wrap; gap: 15px; }
+  .row > div { flex: 1; min-width: 140px; }
+  .actions-row { display: flex; gap: 10px; margin-top: 15px; }
+  
+  .input-with-btn { display: flex; gap: 10px; align-items: stretch; margin-top: 5px; }
+  .input-with-btn input { flex-grow: 1; margin: 0; }
+  .input-with-btn button { margin: 0; }
+
+  /* --- DB LIST --- */
+  .db-meta-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+  
+  .db-list { 
+    max-height: 450px; 
+    overflow-y: auto; 
+    border: 1px solid #333; 
+    border-radius: 8px; 
+    background: #181818;
+    scrollbar-width: none;
+  }
+  .db-list::-webkit-scrollbar { display: none; }
+
+  .db-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #333; gap: 12px; }
+  .thumb { width: 54px; height: 54px; background: #222; border-radius: 6px; object-fit: cover; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .info { flex: 1; overflow: hidden; }
+  .name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; flex-direction: column; gap: 2px; }
+  .id-badge { font-family: "Courier New", monospace; background: #222; color: #666; padding: 2px 4px; border-radius: 3px; font-size: 10px; width: fit-content; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  .prefix-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: bold;
+      color: var(--badge-text);
+      background: var(--badge-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border: 1px solid #444;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+  }
+
+  /* --- MODAL --- */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal { background: var(--card); width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; border: 1px solid var(--border); }
+  .compare-box { display: flex; gap: 10px; margin: 20px 0; background: #111; padding: 15px; border-radius: 10px; }
+  .compare-item { flex: 1; text-align: center; font-size: 11px; overflow: hidden; }
+  .compare-img { width: 70px; height: 70px; margin: 0 auto 8px; background: #333; object-fit: cover; border-radius: 6px; display: block; }
+  .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-bottom: 5px; }
+  .tag-old { background: #333; color: #aaa; }
+  .tag-new { background: #004d40; color: #00e676; }
+
+  /* --- LOGS & PROGRESS --- */
+  #log { font-family: monospace; font-size: 12px; color: var(--muted); margin-top: 15px; max-height: 100px; overflow-y: auto; line-height: 1.4; }
+  .progress-wrap { height: 6px; background: #333; border-radius: 3px; margin-top: 20px; overflow: hidden; display: none; }
+  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="card">
+    <h1>Smart ZIP & Backup</h1>
+    
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+    <button id="selectBtn" onclick="selectFolder()">📂 1. Select Folder</button>
+    
+    <label>File Prefix / Collection Name</label>
+    <div class="input-with-btn">
+      <input type="text" id="prefix" placeholder="e.g. Vacation_2024">
+      <button class="btn-ghost btn-icon" id="filterBtn" onclick="togglePrefixFilter()" title="Filter Index by this prefix">🔍</button>
+    </div>
+    
+    <div class="row">
+      <div>
+        <label>From (Optional)</label>
+        <input type="date" id="dateFrom">
+      </div>
+      <div>
+        <label>To</label>
+        <input type="date" id="dateTo">
+      </div>
+    </div>
+
+    <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+      <input type="checkbox" id="useToday" checked style="width:20px; height:20px; margin:0; accent-color: var(--accent);">
+      <label style="margin:0; cursor:pointer; color: var(--text); font-size: 13px; text-transform: none;" for="useToday">Use today's date</label>
+    </div>
+    
+    <button id="processBtn" disabled onclick="startBackup()">⬇ 2. Process & Save</button>
+    
+    <div class="progress-wrap" id="progWrap">
+      <div class="progress-bar" id="progBar"></div>
+    </div>
+    <div id="log">Waiting for files...</div>
+  </div>
+
+  <div class="card">
+    <h2>Index Manager</h2> <div class="db-meta-bar">
+      <div class="input-with-btn" style="flex:2; margin:0;">
+        <input type="search" id="dbSearch" placeholder="Search..." oninput="searchReset()">
+        <button class="btn-ghost btn-icon" onclick="resetFilter()">↻</button>
+      </div>
+      <div style="flex:1;">
+        <select id="dbSort" onchange="renderDB()" style="margin:0; padding:12px 5px; height:100%;">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="az">Name A-Z</option>
+          <option value="za">Name Z-A</option>
+          <option value="size">Size</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="db-list" id="dbList">
+      <div style="padding:20px; text-align:center; color:#555;">Loading Index...</div>
+    </div>
+    
+    <div class="pagination-controls" id="pgControls" style="display:none">
+        <button id="btnPrev" class="btn-ghost" onclick="changePage(-1)">Previous</button>
+        <span class="page-info" id="pageInfo">Page 1</span>
+        <button id="btnNext" class="btn-ghost" onclick="changePage(1)">Next</button>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-ghost" onclick="exportDB()">📤 Export</button>
+      <button class="btn-ghost" onclick="document.getElementById('importInput').click()">📥 Import</button>
+      <input type="file" id="importInput" accept=".sbdb" style="display:none" onchange="importDB(this)">
+    </div>
+    
+    <button class="btn-danger" onclick="clearDB()" style="margin-top:20px; opacity:0.8; font-size:12px; padding:12px;">⚠ Clear Database</button>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="conflictModal">
+  <div class="modal">
+    <h2 style="color: var(--accent); text-align: center; border:none; display:block;">Conflict Detected</h2>
+    <p style="font-size:13px; color:#ccc; text-align:center; margin-top:-10px;">Same context (prefix), same name, different content.</p>
+    
+    <div class="compare-box">
+      <div class="compare-item">
+        <span class="tag tag-old">EXISTING</span>
+        <img id="confOldThumb" class="compare-img">
+        <div id="confOldMeta" style="color:#888;"></div>
+      </div>
+      <div style="display:flex; align-items:center; color:#444;">vs</div>
+      <div class="compare-item">
+        <span class="tag tag-new">IMPORTING</span>
+        <img id="confNewThumb" class="compare-img">
+        <div id="confNewMeta" style="color:#fff;"></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; display: flex; align-items: center; gap: 10px; justify-content: center;">
+      <input type="checkbox" id="applyAll" style="width:18px; height:18px; margin:0;">
+      <label style="margin:0; text-transform:none; font-size:12px;" for="applyAll">Apply to remaining <span id="conflictCount">0</span> conflicts</label>
+    </div>
+
+    <div class="row">
+      <button class="btn-danger" onclick="resolveConflict('replace')">Replace</button>
+      <button class="btn-ghost" onclick="resolveConflict('ignore')">Keep Old</button>
+    </div>
+  </div>
+</div>
+
+<script src="zip.min.js"></script>
+<script src="StreamSaver.min.js"></script>
+<script src="jszip.min.js"></script>
+<script>
+/* =========================================
+   1. INDEXED DB ENGINE
+   ========================================= */
+const DB_NAME = "SmartBackupDB";
+const DB_VERSION = 10; 
+let db = null;
+let currentPrefixFilter = ""; 
+
+// PAGINATION STATE
+let currentPage = 1;
+const ITEMS_PER_PAGE = 50;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      db = e.target.result;
+      if (db.objectStoreNames.contains("files")) {
+        db.deleteObjectStore("files");
+      }
+      const store = db.createObjectStore("files", { keyPath: "uniqueId" });
+      store.createIndex("prefix", "prefix", { unique: false });
+    };
+    request.onsuccess = (e) => {
+      db = e.target.result;
+      renderDB();
+      resolve(db);
+    };
+    request.onerror = () => reject("DB Error");
+  });
+}
+
+function dbPut(item) {
+  return new Promise((resolve) => {
+    const tx = db.transaction("files", "readwrite");
+    tx.objectStore("files").put(item);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve) => {
+    const tx = db.transaction("files", "readonly");
+    const req = tx.objectStore("files").getAll();
+    req.onsuccess = () => resolve(req.result);
+  });
+}
+
+function dbDelete(uniqueId) {
+  return new Promise((resolve) => {
+    const tx = db.transaction("files", "readwrite");
+    tx.objectStore("files").delete(uniqueId);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+function clearDB() {
+  if(!confirm("Clear entire database index?")) return;
+  const tx = db.transaction("files", "readwrite");
+  tx.objectStore("files").clear();
+  tx.oncomplete = () => renderDB();
+}
+
+/* =========================================
+   2. FINGERPRINT ENGINE
+   ========================================= */
+async function getFastFingerprint(file) {
+    const CHUNK_SIZE = 4096; 
+    const size = file.size;
+    const headBlob = file.slice(0, CHUNK_SIZE);
+    const headBuf = await headBlob.arrayBuffer();
+    
+    let tailBuf = new ArrayBuffer(0);
+    if (size > CHUNK_SIZE) {
+        const tailBlob = file.slice(size - CHUNK_SIZE, size);
+        tailBuf = await tailBlob.arrayBuffer();
+    }
+    
+    const combined = new Uint8Array(headBuf.byteLength + tailBuf.byteLength);
+    combined.set(new Uint8Array(headBuf), 0);
+    combined.set(new Uint8Array(tailBuf), headBuf.byteLength);
+    
+    const hashBuf = await crypto.subtle.digest('SHA-256', combined);
+    const hashArr = Array.from(new Uint8Array(hashBuf));
+    const hashHex = hashArr.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    return `${size.toString(36)}-${hashHex}`;
+}
+
+/* =========================================
+   3. UI HELPERS & FILTERING
+   ========================================= */
+const logEl = document.getElementById("log");
+const progWrap = document.getElementById("progWrap");
+const progBar = document.getElementById("progBar");
+const filterBtn = document.getElementById("filterBtn");
+let allFiles = [];
+
+function togglePrefixFilter() {
+    const prefixInput = document.getElementById('prefix').value.trim();
+    if (currentPrefixFilter && currentPrefixFilter === prefixInput.toLowerCase()) {
+        resetFilter();
+        return;
+    }
+    if(prefixInput) {
+        currentPrefixFilter = prefixInput.toLowerCase();
+        filterBtn.classList.add("btn-active");
+        logEl.textContent = `Focusing on collection: "${prefixInput}"`;
+    } else {
+        currentPrefixFilter = "";
+        filterBtn.classList.remove("btn-active");
+        logEl.textContent = "Showing all collections.";
+    }
+    currentPage = 1; 
+    renderDB();
+}
+
+function searchReset() {
+    currentPage = 1;
+    renderDB();
+}
+
+function resetFilter() {
+    currentPrefixFilter = "";
+    filterBtn.classList.remove("btn-active");
+    document.getElementById('dbSearch').value = "";
+    document.getElementById('prefix').value = "";
+    currentPage = 1;
+    renderDB();
+}
+
+function formatDateDDMMYY(isoDate) {
+    if (!isoDate) return "";
+    const parts = isoDate.split('-'); 
+    if (parts.length !== 3) return "";
+    return `${parts[2]}${parts[1]}${parts[0].slice(2)}`;
+}
+
+document.getElementById('useToday').addEventListener('change', e => {
+  const to = document.getElementById('dateTo');
+  to.disabled = e.target.checked;
+  if (e.target.checked) to.valueAsDate = new Date();
+});
+
+function selectFolder() {
+    document.getElementById('folderInput').value = '';
+    document.getElementById('folderInput').click();
+}
+
+document.getElementById("folderInput").addEventListener("change", (e) => {
+  allFiles = Array.from(e.target.files);
+  logEl.innerHTML = `<strong>${allFiles.length}</strong> files detected.`;
+  if (allFiles.length > 0) document.getElementById("processBtn").disabled = false;
+  document.getElementById('dateTo').valueAsDate = new Date();
+  document.getElementById('useToday').checked = true;
+  document.getElementById('dateTo').disabled = true;
+});
+
+async function generateThumbnail(file) {
+  if (!file.type.startsWith("image/")) return null;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const scale = Math.min(64 / img.width, 64 / img.height);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    if(file.size > 10 * 1024 * 1024) resolve(null); 
+    else reader.readAsDataURL(file);
+  });
+}
+
+/* =========================================
+   4. BACKUP PROCESS
+   ========================================= */
+const MAX_ZIP_SIZE = 450 * 1024 * 1024;
+
+async function startBackup() {
+  const btn = document.getElementById("processBtn");
+  const prefix = document.getElementById('prefix').value.trim() || 'Backup';
+  
+  btn.disabled = true;
+  progWrap.style.display = "block";
+  progBar.style.width = "0%";
+  logEl.textContent = `Scanning context "${prefix}"...`;
+  
+  const existingItems = await dbGetAll();
+  const existingMap = new Map();
+  existingItems.forEach(i => {
+      if (i.prefix.toLowerCase() === prefix.toLowerCase()) {
+          existingMap.set(i.id, true);
+      }
+  });
+  
+  let newFiles = [];
+  let processedFingerprints = 0;
+
+  for (let file of allFiles) {
+    const fingerprint = await getFastFingerprint(file);
+    if (!existingMap.has(fingerprint)) {
+      newFiles.push({ file, key: fingerprint });
+      existingMap.set(fingerprint, true);
+    }
+    processedFingerprints++;
+    if(processedFingerprints % 10 === 0) {
+        logEl.textContent = `Scanning... ${Math.round((processedFingerprints/allFiles.length)*100)}%`;
+    }
+  }
+
+  if (newFiles.length === 0) {
+    logEl.textContent = `No new files for collection "${prefix}".`;
+    progWrap.style.display = "none";
+    btn.disabled = false;
+    return;
+  }
+
+  const startStr = formatDateDDMMYY(document.getElementById('dateFrom').value);
+  const endStr = formatDateDDMMYY(document.getElementById('dateTo').value);
+  let baseName = prefix;
+  if (startStr) baseName += `_${startStr}`;
+  baseName += `_${endStr}`;
+
+  let currentZip = new JSZip();
+  let currentSize = 0;
+  let part = 1;
+
+  for (let i = 0; i < newFiles.length; i++) {
+    const item = newFiles[i];
+    const file = item.file;
+    const thumb = await generateThumbnail(file);
+    const path = (file.webkitRelativePath || file.name).split('/').slice(1).join('/') || file.name;
+    
+    currentZip.file(path, file, { compression: "STORE" });
+    currentSize += file.size;
+    
+    await dbPut({
+      uniqueId: `${prefix}::${item.key}`,
+      id: item.key,
+      prefix: prefix,
+      name: file.name,
+      path: path,
+      size: file.size,
+      date: file.lastModified,
+      thumb: thumb,
+      zipRef: `${baseName}_${part}.zip`
+    });
+
+    const percent = Math.round(((i+1) / newFiles.length) * 100);
+    progBar.style.width = percent + "%";
+    logEl.textContent = `Zipping ${i+1}/${newFiles.length}...`;
+
+    if (currentSize > MAX_ZIP_SIZE || i === newFiles.length - 1) {
+      const zipName = `${baseName}_${part}.zip`;
+      logEl.innerHTML = `Saving <b>${zipName}</b>...`;
+      
+      const content = await currentZip.generateAsync({type:"blob"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(content);
+      a.download = zipName;
+      a.click();
+      
+      currentZip = new JSZip();
+      currentSize = 0;
+      part++;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  renderDB();
+  logEl.textContent = "Backup Complete!";
+  btn.disabled = false;
+}
+
+/* =========================================
+   5. DB MANAGER: PAGINATION & RENDER
+   ========================================= */
+async function renderDB() {
+  const list = document.getElementById("dbList");
+  const searchInput = document.getElementById("dbSearch").value.toLowerCase();
+  const sortMode = document.getElementById("dbSort").value;
+  const controls = document.getElementById("pgControls");
+  
+  let items = await dbGetAll();
+  
+  // 1. Prefix Filter
+  if (currentPrefixFilter) {
+      items = items.filter(i => (i.prefix || "").toLowerCase() === currentPrefixFilter);
+  }
+
+  // 2. Search Filter (Context Aware)
+  if (searchInput) {
+      items = items.filter(i => {
+          const matchName = i.name.toLowerCase().includes(searchInput);
+          const matchId = i.id.toLowerCase().includes(searchInput);
+          // Only search prefix field if NOT already filtering by a specific prefix
+          const matchPrefix = !currentPrefixFilter && (i.prefix || "").toLowerCase().includes(searchInput);
+          
+          return matchName || matchId || matchPrefix;
+      });
+  }
+
+  // 3. Sorting
+  items.sort((a, b) => {
+      if (sortMode === 'newest') return b.date - a.date;
+      if (sortMode === 'oldest') return a.date - b.date;
+      if (sortMode === 'az') return a.name.localeCompare(b.name);
+      if (sortMode === 'za') return b.name.localeCompare(a.name);
+      if (sortMode === 'size') return b.size - a.size;
+      return 0;
+  });
+
+  // 4. PAGINATION LOGIC (FIXED)
+  const totalItems = items.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1; 
+  
+  // CLAMP PAGE (Prevent negative or overflow)
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+  
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const pageItems = items.slice(startIdx, endIdx);
+
+  list.innerHTML = "";
+  
+  for (let item of pageItems) {
+    const d = new Date(item.date);
+    const dateStr = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear().toString().slice(2)}`;
+    
+    const div = document.createElement("div");
+    div.className = "db-item";
+    
+    let prefixHtml = "";
+    if (!currentPrefixFilter) {
+        prefixHtml = `<span class="prefix-badge">${item.prefix}</span>`;
+    }
+    
+    div.innerHTML = `
+      <div class="thumb">${item.thumb ? `<img src="${item.thumb}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">` : '📄'}</div>
+      <div class="info">
+        <div class="name">${prefixHtml}${item.name}</div>
+        <div class="meta">
+            <span>${(item.size/1024).toFixed(0)}KB • ${dateStr}</span>
+            <span class="id-badge" title="${item.id}">${item.id}</span>
+        </div>
+      </div>
+      <button class="btn-small btn-danger" onclick="deleteItem('${item.uniqueId}')" style="margin:0; width:auto; padding:8px 12px;">×</button>
+    `;
+    list.appendChild(div);
+  }
+  
+  if(totalItems === 0) {
+      list.innerHTML = `<div style="padding:20px;text-align:center;font-size:12px;color:#555;">
+        ${currentPrefixFilter ? `No files found in "${currentPrefixFilter}"` : 'Index is empty'}
+      </div>`;
+      controls.style.display = "none";
+  } else {
+      controls.style.display = "flex";
+      document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
+      
+      // BUTTON STATE
+      document.getElementById("btnPrev").disabled = (currentPage === 1);
+      document.getElementById("btnNext").disabled = (currentPage === totalPages);
+  }
+}
+
+function changePage(delta) {
+    currentPage += delta;
+    renderDB();
+}
+
+async function deleteItem(uniqueId) {
+  if(!confirm("Remove from index?")) return;
+  await dbDelete(uniqueId);
+  renderDB();
+}
+
+async function exportDB() {
+  const items = await dbGetAll();
+  const json = JSON.stringify(items);
+  const b64 = btoa(unescape(encodeURIComponent(json))); 
+  const blob = new Blob([b64], {type: "application/octet-stream"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `backup_idx_${new Date().toISOString().slice(0,10)}.sbdb`;
+  a.click();
+}
+
+let importQueue = [], conflictQueue = [], applyAllAction = null;
+
+async function importDB(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const text = await file.text();
+  try {
+    const json = decodeURIComponent(escape(atob(text)));
+    importQueue = JSON.parse(json);
+    conflictQueue = [];
+    applyAllAction = null;
+    
+    const existing = await dbGetAll();
+    const map = new Map(existing.map(i => [i.uniqueId, i]));
+    
+    let added = 0;
+    for(let item of importQueue) {
+      if (!item.uniqueId) item.uniqueId = `${item.prefix}::${item.id}`;
+      if (!map.has(item.uniqueId)) {
+        await dbPut(item);
+        added++;
+      }
+    }
+    
+    alert(`Imported ${added} items.`); renderDB(); 
+    
+  } catch(e) { console.error(e); alert("Error reading file"); }
+  input.value = "";
+}
+
+function processConflict() {}
+function resolveConflict(action) {}
+
+initDB();
+</script>
+</body>
+</html>
